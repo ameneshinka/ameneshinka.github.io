@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Focus Task 番茄任務中</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            background-color: rgba(77, 255, 255, 0.5);
+            color: #333;
+            padding: 20px;
+	margin: 10
+        }
+
+        .timer-button {
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .timer-button:hover {
+            background-color: #e64a19;
+        }
+
+        #countdownDisplay {
+            font-size: 2em;
+            margin-top: 20px;
+            color: #5bc0de;
+        }
+
+        
+
+        .task-list {
+            margin-top: 20px;
+        }
+
+        .task-item {
+            background-color: #f7f7f7;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .task-item button {
+            margin-left: 10px;
+        }
+
+        .page {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="showPage('timerPage')">番茄任務中</button>
+    <button onclick="showPage('taskPage')">任務管理</button>
+
+    <div id="timerPage" class="page">
+        <h2>番茄任務中</h2>
+        <label for="minutesInput">分鐘:</label>
+        <input type="number" id="minutesInput" placeholder="輸入分鐘" min="0">
+        <label for="secondsInput">秒:</label>
+        <input type="number" id="secondsInput" placeholder="輸入秒" min="0">
+        <button class="timer-button" onclick="startCustomTimer()">開始自訂計時</button>
+        <button class="timer-button" onclick="startPresetTimer(25, 0)">25分鐘</button>
+        <button class="timer-button" onclick="startPresetTimer(5, 0)">5分鐘</button>
+        <button class="timer-button" onclick="pauseTimer()">暫停</button>
+        <button class="timer-button" onclick="continueTimer()">繼續</button>
+        <button class="timer-button" onclick="stopTimer()">停止並清空</button>
+        <h3 id="countdownDisplay">00:00</h3>
+        <audio id="alarmSound" src="https://drive.google.com/file/d/14rjEha8tDghzj3vW3Gtyz6hqVfldPrLx/view?usp=sharing"></audio>
+    </div>
+
+    <div id="taskPage" class="page">
+        <h2>任務管理</h2>
+        <form id="taskForm">
+            <input type="text" id="taskName" placeholder="任務名稱" required><br>
+            <input type="datetime-local" id="taskTime" required><br>
+            <button type="submit">添加任務</button>
+        </form>
+
+        <div class="task-list" id="taskList"></div>
+    </div>
+
+    <div class="background-block"></div>
+
+    <script>
+        var tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+        document.getElementById('taskForm').onsubmit = function(event) {
+            event.preventDefault();
+            var taskName = document.getElementById('taskName').value;
+            var taskTime = document.getElementById('taskTime').value;
+
+            tasks.push({ name: taskName, time: taskTime });
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+
+            updateTaskList();
+            document.getElementById('taskForm').reset();
+        };
+
+        function updateTaskList() {
+            var taskListElement = document.getElementById('taskList');
+            taskListElement.innerHTML = '';
+
+            tasks.forEach(function(task, index) {
+                var taskElement = document.createElement('div');
+                taskElement.className = 'task-item';
+                taskElement.innerHTML = `
+                    <span>${task.name} - ${task.time}</span>
+                    <button onclick="deleteTask(${index})">刪除</button>
+                    <button onclick="editTask(${index})">編輯</button>
+                `;
+                taskListElement.appendChild(taskElement);
+            });
+        }
+
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            updateTaskList();
+        }
+
+        function editTask(index) {
+            var task = tasks[index];
+            document.getElementById('taskName').value = task.name;
+            document.getElementById('taskTime').value = task.time;
+            deleteTask(index);
+        }
+
+        function showPage(pageId) {
+            var pages = document.getElementsByClassName('page');
+            for (var i = 0; i < pages.length; i++) {
+                pages[i].style.display = 'none';
+            }
+            document.getElementById(pageId).style.display = 'block';
+        }
+
+        showPage('timerPage');
+
+        // 番茄计时器的脚本
+        var interval;
+        var timer;
+
+        function startTimer(minutes, seconds) {
+            timer = minutes * 60 + seconds;
+            updateDisplay();
+
+            clearInterval(interval); 
+            interval = setInterval(function () {
+                if (--timer < 0) {
+                    clearInterval(interval);
+                    document.getElementById('countdownDisplay').textContent = "時間到！";
+                    document.getElementById('alarmSound').play(); 
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function updateDisplay() {
+            var remainingMinutes = parseInt(timer / 60, 10);
+            var remainingSeconds = parseInt(timer % 60, 10);
+            remainingMinutes = remainingMinutes < 10 ? "0" + remainingMinutes : remainingMinutes;
+            remainingSeconds = remainingSeconds < 10 ? "0" + remainingSeconds : remainingSeconds;
+            document.getElementById('countdownDisplay').textContent = remainingMinutes + ":" + remainingSeconds;
+        }
+
+        function startCustomTimer() {
+            var minutes = parseInt(document.getElementById('minutesInput').value, 10) || 0;
+            var seconds = parseInt(document.getElementById('secondsInput').value, 10) || 0;
+            startTimer(minutes, seconds);
+        }
+
+        function startPresetTimer(minutes, seconds) {
+            startTimer(minutes, seconds);
+        }
+
+        function pauseTimer() {
+            clearInterval(interval);
+        }
+
+        function continueTimer() {
+            clearInterval(interval); 
+            interval = setInterval(function () {
+                if (--timer < 0) {
+                    clearInterval(interval);
+                    document.getElementById('countdownDisplay').textContent = "時間到！";
+                    document.getElementById('alarmSound').play(); 
+                } else {
+                    updateDisplay();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(interval);
+            timer = 0;
+            document.getElementById('countdownDisplay').textContent = "00:00";
+        }
+
+function updateTaskList() {
+    var taskListElement = document.getElementById('taskList');
+    taskListElement.innerHTML = '';
+
+    // 對任務進行排序，最接近當前時間的任務放在前面
+    tasks.sort(function(a, b) {
+        return new Date(a.time) - new Date(b.time);
+    });
+
+    // 將過期的任務移到列表底部
+    var currentTime = new Date();
+    var expiredTasks = tasks.filter(task => new Date(task.time) < currentTime);
+    var upcomingTasks = tasks.filter(task => new Date(task.time) >= currentTime);
+
+    var sortedTasks = upcomingTasks.concat(expiredTasks);
+
+    sortedTasks.forEach(function(task) {
+        var taskElement = document.createElement('div');
+        taskElement.className = 'task-item';
+        
+        // 檢查任務是否過期
+        if (new Date(task.time) < currentTime) {
+            taskElement.style.textDecoration = 'line-through';
+        }
+
+        taskElement.innerHTML = `
+            <span>${task.name} - ${task.time}</span>
+            <button onclick="deleteTask('${task.name}')">刪除</button>
+            <button onclick="editTask('${task.name}', '${task.time}')">編輯</button>
+        `;
+        taskListElement.appendChild(taskElement);
+    });
+}
+
+function deleteTask(taskName) {
+    tasks = tasks.filter(task => task.name !== taskName);
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+    updateTaskList();
+}
+
+function editTask(taskName, taskTime) {
+    document.getElementById('taskName').value = taskName;
+    document.getElementById('taskTime').value = taskTime;
+
+    // 移除舊任務，待重新提交
+    deleteTask(taskName);
+}
+
+var tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+var editingTask = null; // 添加一个用于存储正在编辑的任务的变量
+
+// 修改的 editTask 函数
+function editTask(taskName, taskTime) {
+    document.getElementById('taskName').value = taskName;
+    document.getElementById('taskTime').value = taskTime;
+
+    editingTask = { name: taskName, time: taskTime }; // 保存正在编辑的任务
+}
+
+document.getElementById('taskForm').onsubmit = function(event) {
+    event.preventDefault();
+    var taskName = document.getElementById('taskName').value;
+    var taskTime = document.getElementById('taskTime').value;
+
+    if (editingTask) {
+        // 删除旧任务
+        tasks = tasks.filter(task => task.name !== editingTask.name);
+        editingTask = null;
+    }
+
+    // 添加新任务
+    tasks.push({ name: taskName, time: taskTime });
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+
+    updateTaskList();
+    document.getElementById('taskForm').reset();
+};
+
+function startTimer(minutes, seconds) {
+    timer = minutes * 60 + seconds;
+    updateDisplay();
+
+    clearInterval(interval); 
+    interval = setInterval(function () {
+        if (--timer < 0) {
+            clearInterval(interval);
+            document.getElementById('countdownDisplay').textContent = "時間到！";
+            document.getElementById('alarmSound').play(); // 播放音效
+
+            alert("時間到了！"); // 彈出通知窗口
+        } else {
+            updateDisplay();
+        }
+    }, 1000);
+}
+
+
+        updateTaskList();
+    </script>
+</body>
+</html>
